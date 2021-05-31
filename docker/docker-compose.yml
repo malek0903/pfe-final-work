@@ -79,7 +79,6 @@ services:
         interval: 20s
         timeout: 5s
         retries: 5
-        start_period: 40s
       
 ########################### Spring cloud gateway ######################
   gateway:
@@ -207,7 +206,6 @@ networks:
     ipam:
       config:
         - subnet: 10.5.0.0/16
-          gateway: 10.5.0.1
 volumes:
   data1:
   postgres_data:
