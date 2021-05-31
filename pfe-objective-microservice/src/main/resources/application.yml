@@ -1,0 +1,93 @@
+quarkus:
+  http:
+    port: 8084
+  application:
+    name: objective-service
+  datasource:
+    db-kind: postgresql
+    jdbc:
+      url: jdbc:postgresql://localhost:5432/objective-pfe-db
+    password: Mbyz0903
+    username: developer
+  index-dependency:
+    commons:
+      group-id: org.tn.esprit
+      artifact-id: pfe-commons
+  banner:
+    path: banner.txt
+  flyway:
+    migrate-at-start: true
+  hibernate-orm:
+    database:
+      generation: update
+
+      # OIDC Configuration
+#  oidc:
+#    auth-server-url: http://localhost:9080/auth/realms/pfe-realm
+#    client-id: objectif-ms-client
+#    credentials:
+#      secret: 0b4e5988-e238-43b9-bb00-e408efbab394
+#    tls:
+#      verification: none
+#  keycloak:
+#    policy-enforcer:
+#      enable: true
+
+keycloak:
+  credentials:
+    client-id: objectif-ms-client
+
+mp:
+  jwt:
+    verify:
+      issuer: http://localhost:9080/auth/realms/pfe-realm
+      publickey:
+        location: http://localhost:9080/auth/realms/pfe-realm/protocol/openid-connect/certs
+
+consul-service:
+  url: http://localhost
+  port: 8500
+
+objective-service:
+  address: 127.0.0.1
+vertx-consul-client:
+  url: localhost
+
+"%prod":
+  consul-service:
+    url: http://registry
+    port: 8500
+  vertx-consul-client:
+    url: registry
+  objective-service:
+    address: 10.5.0.7
+  workflow-service:
+    url: http://gateway:8080/api/workflow-service
+
+workflow-service:
+  url: http://localhost:8080/api/workflow-service
+org:
+  tn:
+    esprit:
+      client:
+        WorkflowRestClient/mp-rest/url : ${workflow-service.url}
+        WorkflowRestClient/mp-rest/scope: javax.inject.Singleton
+        CategorieRestClient/mp-rest/url: ${workflow-service.url}
+        CategorieRestClient/mp-rest/scope: javax.inject.Singleton
+        ConsulRestClient/mp-rest/url: ${consul-service.url}:${consul-service.port}
+        ConsulRestClient/mp-rest/scope: javax.inject.Singleton
+
+# Datasource config properties
+"%test":
+  quarkus:
+    kubernetes-config:
+      enabled: false
+    datasource:
+      db-kind: postgresql
+  # Flyway minimal config properties
+    flyway:
+      migrate-at-start: true
+
+
+
+

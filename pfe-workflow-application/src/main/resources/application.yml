@@ -1,0 +1,118 @@
+quarkus:
+  datasource:
+    db-kind: postgresql
+    jdbc:
+      url: jdbc:postgresql://localhost:5432/pfe-db
+    password: Mbyz0903
+    username: developer
+  flyway:
+    migrate-at-start: true
+  swagger-ui:
+    always-include : true
+
+  index-dependency:
+    commons:
+      group-id: org.tn.esprit
+      artifact-id: pfe-commons
+  mailer:
+    auth-methods: DIGEST-MD5 CRAM-SHA256 CRAM-SHA1 CRAM-MD5 PLAIN LOGIN
+    from : malek.benyakhlef@esprit.tn
+    host: smtp.gmail.com
+    port: 465
+    ssl: true
+    username: malek.benyakhlef@esprit.tn
+    password: 183JMT0154*
+    mock: false
+  http:
+    port: 8083
+    limits:
+      max-body-size: 100M
+      max-header-size: 10M
+    body:
+      handle-file-uploads: true
+      preallocate-body-buffer: true
+
+  application:
+    name: workflow-service
+  banner:
+    path: banner.txt
+
+  hibernate-orm:
+    database:
+      generation: update
+
+keycloak:
+  credentials:
+    client-id: workflow-ms-client
+#me: malek@esprit.tn
+mp:
+  jwt:
+    verify:
+      issuer: http://localhost:9080/auth/realms/pfe-realm
+      publickey:
+        location: http://localhost:9080/auth/realms/pfe-realm/protocol/openid-connect/certs
+
+
+# MinIO Configuration
+minio:
+  use-ssl: false
+  host: localhost
+  port: 9090
+  access-key: minioadmin
+  secret-key: minioadmin
+  catalogue-item-bucket: workflow-items
+
+workflow-service:
+  address: 127.0.0.1
+  instance: 789456321456
+
+objective-service:
+  url: http://localhost:8080/api/objective-service/
+
+oxford-service:
+  url: https://www.dictionaryapi.com/api/v3/references/ithesaurus/
+
+photos-service:
+  url: https://api.unsplash.com/
+
+vertx-consul-client:
+  url: localhost
+
+consul-service:
+  url: http://localhost
+  port: 8500
+
+"%prod":
+  consul-service:
+    url: http://registry
+    port: 8500
+  vertx-consul-client:
+    url: registry
+  workflow-service:
+    address: 10.5.0.6
+  mp:
+    jwt:
+      verify:
+        issuer: http://keycloak:9080/auth/realms/pfe-realm
+        publickey:
+          location: http://keycloak:9080/auth/realms/pfe-realm/protocol/openid-connect/certs
+  objective-service:
+    url: http://gateway:8080/api/objective-service/
+
+
+org:
+  tn:
+    esprit:
+      client:
+        ObjectiveRestClient/mp-rest/url : ${objective-service.url}
+        ObjectiveRestClient/mp-rest/scope: javax.inject.Singleton
+        OxfordDictionaryRestClient/mp-rest/url :  ${oxford-service.url}
+        OxfordDictionaryRestClient/mp-rest/scope: javax.inject.Singleton
+        PhotosRestClient/mp-rest/url : ${photos-service.url}
+        PhotosRestClient/mp-rest/scope: javax.inject.Singleton
+        ConsulRestClient/mp-rest/url: ${consul-service.url}:${consul-service.port}
+        ConsulRestClient/mp-rest/scope: javax.inject.Singleton
+
+
+
+

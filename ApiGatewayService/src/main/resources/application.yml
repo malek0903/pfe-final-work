@@ -1,0 +1,47 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: api-gateway
+#  security:
+#    oauth2:
+#      client:
+#        provider:
+#          keycloak:
+#            token-uri: http://localhost:9080/auth/realms/pfe-realm/protocol/openid-connect/token
+#            authorization-uri: http://localhost:9080/auth/realms/pfe-realm/protocol/openid-connect/auth
+#            userinfo-uri: http://localhost:9080/auth/realms/pfe-realm/protocol/openid-connect/userinfo
+#            user-name-attribute: preferred_username
+#        registration:
+#          keycloak-without-test-scope:
+#            provider: keycloak
+#            client-id: spring-gateway-client
+#            client-secret: 696a1215-dea1-4c30-9e8b-6ffd3b98b211
+#            authorization-grant-type: authorization_code
+#            redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        prefer-ip-address: true
+
+    gateway:
+      discovery:
+        instanceId: ${spring.application.name}:${vcap.application.instance_id:${spring.application.instance_id:${random.value}}}
+        locator:
+          enabled: true
+          predicates:
+            - name: Path
+              args:
+                pattern: "'/api/' + serviceId + '/**'"
+          filters:
+            - name: RemoveRequestHeader
+              args:
+                name: "'Authorization'"
+            - name: RewritePath
+              args:
+                regexp: "'/api/' + serviceId + '/(?<remaining>.*)'"
+                replacement: "'/${remaining}'"
+#... removed for brevity
+

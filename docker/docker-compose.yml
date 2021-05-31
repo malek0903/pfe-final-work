@@ -1,0 +1,213 @@
+version: '3'
+services:
+##################################### base de donnee POSTGRES ######################"
+  postgres:
+      image: postgres:13
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      container_name: postgres
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.2
+      ports:
+        - 5432:5432
+      environment:
+        POSTGRES_DB: postgres
+        POSTGRES_USER: developer
+        POSTGRES_PASSWORD: Mbyz0903
+        POSTGRES_HOST_AUTH_METHOD: trust
+
+################################################keycloak
+
+  keycloak:
+      image: quay.io/keycloak/keycloak:latest
+      container_name: keycloak
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.9
+      volumes:
+#      - ./_resources/demo-config/standalone-ha.xml:/opt/jboss/keycloak/standalone/configuration/standalone-ha.xml
+#      - ./adminlte/:/opt/jboss/keycloak/themes/adminlte/
+        - ./weavin/:/opt/jboss/keycloak/themes/weavin/
+      environment:
+        DB_VENDOR: POSTGRES
+        DB_ADDR: postgres
+        DB_DATABASE: postgres
+        DB_USER: developer
+        DB_SCHEMA: public
+        DB_PASSWORD: Mbyz0903
+        KEYCLOAK_USER: admin
+        KEYCLOAK_PASSWORD: Pa55w0rd
+    # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the PostgreSQL JDBC driver documentation in order to use it.
+    #JDBC_PARAMS: "ssl=true"
+      ports:
+        - 9080:8080
+      depends_on:
+        - postgres
+####################################### minio ###################################
+  minio:
+    image: minio/minio
+    container_name: minio
+    networks:
+      mynetwork:
+        ipv4_address: 10.5.0.10
+    volumes:
+      - data1:/data
+    ports:
+      - "9090:9000"
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: ["server", "/data"]
+##################################### Server d'enregistrement consul
+
+  registry:
+      image: consul:latest
+      container_name: registry
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.3
+      ports:
+        - 8500:8500
+      command: agent -server -bootstrap-expect 1 -ui -data-dir /tmp -client=0.0.0.0
+      environment: 
+        CONSUL_BIND_INTERFACE: "eth0"
+      healthcheck:
+        test: ["CMD", "curl -f  http://localhost:8500/v1/health/service/consul || exit 1"]
+        interval: 20s
+        timeout: 5s
+        retries: 5
+        start_period: 40s
+      
+########################### Spring cloud gateway ######################
+  gateway:
+      restart: on-failure
+      container_name: gateway
+      build: 
+        context: ../ApiGatewayService
+        dockerfile: Dockerfile
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.4
+      volumes:
+        - /tmp:/logs
+      ports:
+        - 8080:8080
+      environment:
+        SPRING_CLOUD_CONSUL_HOST: http://registry
+        SPRING_CLOUD_CONSUL_PORT: 8500
+      depends_on:
+        - registry
+          #condition: service_healthy
+      links:
+        - registry
+############################# pfe dashboard microservice #################
+  pfe-dashboard:
+      restart: on-failure
+      container_name: pfe-dashboard
+      build: 
+        context: ../pfe-dashboard-microservice
+        dockerfile: Dockerfile.jvm
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.5
+      volumes:
+        - /tmp:/logs
+      ports:
+        - 8082:8082
+      environment:
+        WORKFLOW-SERVICE_URL: http://gateway:8080/api/workflow-service/
+        OBJECTIVE-SERVICE_URL: http://gateway:8080/api/objective-service/
+        CONSUL-SERVICE_URL: http://registry
+        CONSUL-SERVICE_PORT: 8500
+        VERTX-CONSUL-CLIENT_URL: registry
+        DASHBOARD-SERVICE_ADDRESS: http://10.5.0.5
+        #DASHBOARD-SERVICE_ADDRESS: 127.0.0.1
+      depends_on:
+        - registry
+          #condition: service_healthy
+      links:
+        - registry
+        - gateway
+      
+############################## pfe workflow microservice ############
+  pfe-workflow:
+      restart: on-failure
+      container_name: pfe-workflow
+      build: 
+        context: ../pfe-workflow-application
+        dockerfile: Dockerfile.jvm
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.6
+      volumes:
+        - /tmp:/logs
+      ports:
+        - 8083:8083
+      depends_on:
+        - registry
+          #condition: service_healthy
+      links:
+        - registry
+        - postgres
+        - gateway
+        #- keycloak
+      environment:
+        MP_JWT_VERIFY_ISSUER: http://keycloak:9080/auth/realms/pfe-realm
+        MP_JWT_VERIFY_PUBLIC_KEY: http://keycloak:9080/auth/realms/pfe-realm/protocol/openid-connect/certs
+        OBJECTIVE-SERVICE_URL: http://gateway:8080/api/objective-service/
+        MINIO_HOST : minio
+        QUARKUS_DATASOURCE_DB-KING: postgresql
+        QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/pfe-db
+        CONSUL-SERVICE_URL: http://registry
+        CONSUL-SERVICE_PORT: 8500
+        VERTX-CONSUL-CLIENT_URL: registry
+        WORKFLOW-SERVICE_ADDRESS: http://10.5.0.6
+
+
+########################### pfe objectives microservice ######################
+  pfe-objective:
+      restart: always
+      container_name: pfe-objective
+      build: 
+        context: ../pfe-objective-microservice
+        dockerfile: Dockerfile.jvm
+      networks:
+        mynetwork:
+          ipv4_address: 10.5.0.7
+      volumes:
+      volumes:
+        - /tmp:/logs
+      ports:
+        - 8084:8084
+      environment:
+        WORKFLOW-SERVICE_URL: http://pfe-objective:8083/api/workflow-service/
+        QUARKUS_DATASOURCE_DB-KING: postgresql
+        QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/objective-pfe-db
+        #QUARKUS_OIDC_AUTH-SERVER-URL: http://10.5.0.9:9080/auth/realms/pfe-realm
+        CONSUL-SERVICE_URL: http://registry
+        CONSUL-SERVICE_PORT: 8500
+        VERTX-CONSUL-CLIENT_URL: registry
+        OBJECTIVE-SERVICE_ADDRESS: http://10.5.0.7
+      depends_on:
+        - postgres
+        - registry
+        #- keycloak
+      links:
+        - registry
+        - postgres
+        - gateway
+        #- keycloak
+      
+networks:
+  mynetwork:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1
+volumes:
+  data1:
+  postgres_data:
+      driver: local
+      
