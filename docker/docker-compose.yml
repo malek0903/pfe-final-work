@@ -5,6 +5,7 @@ services:
       image: postgres:13
       volumes:
         - postgres_data:/var/lib/postgresql/data
+        - ./db:/docker-entrypoint-initdb.d/
       container_name: postgres
       networks:
         mynetwork:
@@ -16,7 +17,8 @@ services:
         POSTGRES_USER: developer
         POSTGRES_PASSWORD: Mbyz0903
         POSTGRES_HOST_AUTH_METHOD: trust
-
+        WORKFLOW_DB_NAME: pfe-db
+	OBJECTIVE_DB_NAME: objective-pfe-db
 ################################################keycloak
 
   keycloak:
