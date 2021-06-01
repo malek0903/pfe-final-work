@@ -21,8 +21,11 @@
 # docker run -i --rm -p 8080:8080 -p 5005:5005 -e JAVA_ENABLE_DEBUG="true" quarkus/quarkus-pfe-jvm
 #
 ###
-FROM maven:3.6.0-jdk-11-slim AS build
-RUN mvn clean install
+
+FROM maven:3.5-jdk-8 AS build
+COPY src /usr/src/app/src
+COPY pom.xml /usr/src/app
+RUN mvn -f /usr/src/app/pom.xml clean install
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.3
 
@@ -43,8 +46,12 @@ RUN microdnf install curl ca-certificates ${JAVA_PACKAGE} \
     && chmod 540 /deployments/run-java.sh \
     && echo "securerandom.source=file:/dev/urandom" >> /etc/alternatives/jre/lib/security/java.security
 
+# Configure the JAVA_OPTIONS, you can add -XshowSettings:vm to also display the heap size.
+ENV JAVA_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+COPY --from=build /usr/src/app/target/lib/* /deployments/lib/
+COPY --from=build /usr/src/app/target/*-runner.jar /deployments/app.jar
 
-COPY /target/gateway-0.0.1-SNAPSHOT.jar  /deployments/app.jar
-EXPOSE 8080
+EXPOSE 8082
+USER 1001
 
 ENTRYPOINT [ "/deployments/run-java.sh" ]
