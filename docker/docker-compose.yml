@@ -12,6 +12,7 @@ services:
         - 5432:5432
       volumes:
         - ./docker-postgresql-multiple-databases:/docker-entrypoint-initdb.d
+        - postgres_data:/var/lib/postgresql/data
       environment:
         POSTGRES_MULTIPLE_DATABASES: pfe-db,objective-pfe-db
         POSTGRES_USER: developer
