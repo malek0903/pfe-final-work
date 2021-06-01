@@ -10,16 +10,14 @@ services:
           ipv4_address: 10.5.0.2
       ports:
         - 5432:5432
+      volumes:
+        - ./docker-postgresql-multiple-databases:/docker-entrypoint-initdb.d
       environment:
-        POSTGRES_DB: postgres
+        POSTGRES_MULTIPLE_DATABASES: postgres,pfe-db,objective-pfe-db
         POSTGRES_USER: developer
         POSTGRES_PASSWORD: Mbyz0903
         POSTGRES_HOST_AUTH_METHOD: trust
-        WORKFLOW_DB_NAME: pfe-db
-        OBJECTIVE_DB_NAME: objective-pfe-db
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-        - ./docker_postgres_init.sql:/docker-entrypoint-initdb.d/docker_postgres_init.sql
+      
 ################################################keycloak
 
   keycloak:
