@@ -32,4 +32,4 @@ In this keycloak is implemented with Open id connect to generate JWT Token, it a
 
 <h1>Project Architecture</h1>
 
-
+![alt text](https://github.com/malek0903/pfe-final-work/blob/fae51c466ed01b37d1e5cb2f41dc169226caf70d/Architecture%20physique.png)
